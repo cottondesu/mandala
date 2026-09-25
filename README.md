@@ -1,18 +1,23 @@
 # Mandala
 
-Mandala is an offline, coverage-first CLI. It records the facets of a goal that still need attention. It does not run tasks, inspect a repository, call an LLM, or verify evidence. Agent Skills and plugins are future integrations; the Go core has no agent-specific behavior.
+An offline Go CLI for tracking declared coverage gaps in human and coding agent work.
 
-## Build and install
+> Tasks tell agents what to do. Cells tell you what they forgot.
 
-Requires Go 1.26 or newer. There are no external dependencies.
+Mandala tracks the cells you declare for a goal and reports open required leaves as gaps, in deterministic text or JSON. It works with human workflows and coding agents, but does not generate a complete plan, inspect code, execute tasks, or call an LLM. Zero gaps means only that the required cells you declared are resolved.
+
+## Install
+
+Requires Go 1.26 or newer. Install the latest published version:
+
+```sh
+go install github.com/cottondesu/mandala/cmd/mandala@latest
+```
+
+From a checkout, you can instead build a local binary or install it into your Go binary directory:
 
 ```sh
 go build -o mandala ./cmd/mandala
-```
-
-To install from a checkout into your Go binary directory:
-
-```sh
 go install ./cmd/mandala
 ```
 
@@ -29,7 +34,15 @@ mandala done security.csrf
 mandala gaps --required
 ```
 
-The final command prints unresolved required leaf IDs in ascending order and exits `1` while any remain. `done` is shorthand for `mark <id> done`. Use `mandala mark <id> na` for a leaf that does not apply, or `mandala mark <id> open` to reopen it. A parent becomes `expanded` when its first child is added; mark the leaves, not the parent. Reopen a `done` or `na` leaf before expanding it.
+The final command exits `1` and prints the unresolved required leaf IDs:
+
+```text
+compatibility
+security.token-storage
+tests
+```
+
+Adding children expands `security`, so its open leaves become the gaps. `done` is shorthand for `mark <id> done`. Use `mandala mark <id> na` for a leaf that does not apply, or `mandala mark <id> open` to reopen it. Reopen a `done` or `na` leaf before expanding it.
 
 ## Commands
 
