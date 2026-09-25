@@ -1,0 +1,10 @@
+/mandala
+/mandala.exe
+*.test
+/coverage.out
+*.prof
+.DS_Store
+/.omx/
+/.omx-state-locks/
+/.omx-state-locks.identity.json
+/.codegraph
