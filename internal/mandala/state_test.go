@@ -148,6 +148,17 @@ func TestSaveFailurePreservesExistingState(t *testing.T) {
 	}
 }
 
+func TestInitRejectsNilCellsWithoutCreatingProject(t *testing.T) {
+	root := t.TempDir()
+	s := State{SchemaVersion: 1, Goal: "goal"}
+	if err := Init(root, s); err == nil {
+		t.Fatal("Init accepted nil cells that cannot be loaded")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".mandala")); !os.IsNotExist(err) {
+		t.Fatalf("invalid state left a project boundary: %v", err)
+	}
+}
+
 func TestCleanRefusesCorruptState(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".mandala")

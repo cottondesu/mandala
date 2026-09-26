@@ -68,6 +68,9 @@ func (s State) Validate() error {
 			return problem("E_STATE_INVALID", "goal must be one line without control or line separator characters")
 		}
 	}
+	if s.Cells == nil {
+		return problem("E_STATE_INVALID", "cells must be an array")
+	}
 	if len(s.Cells) > 72 {
 		return problem("E_LIMIT", "state exceeds 72 cells")
 	}

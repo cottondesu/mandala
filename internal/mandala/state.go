@@ -146,6 +146,9 @@ func checkUniqueJSONKeys(decoder *json.Decoder) error {
 }
 
 func Init(root string, s State) error {
+	if err := s.Validate(); err != nil {
+		return err
+	}
 	root, err := canonicalDirectory(root)
 	if err != nil {
 		return err

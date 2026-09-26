@@ -78,7 +78,7 @@ func execute(name string, args []string, start, project string) (string, int, er
 	if name == "init" {
 		s, err := NewState(positional[0])
 		if err != nil {
-			return "", 0, err
+			return "", 0, problem("E_USAGE", "%v", err)
 		}
 		root := start
 		if project != "" {

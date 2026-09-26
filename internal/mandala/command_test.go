@@ -175,3 +175,38 @@ func TestRunOptionalOnlyGapDoesNotBlockCompletion(t *testing.T) {
 		t.Fatalf("status: exit=%d stdout=%q stderr=%q", code, out, diagnostics)
 	}
 }
+
+func TestRunShowGroupsChildWithItsParent(t *testing.T) {
+	root := t.TempDir()
+	for _, args := range [][]string{{"init", "goal"}, {"add", "a"}, {"add", "a-x"}, {"add", "a.z"}} {
+		if code, _, diagnostics := runTestCommand(root, args...); code != 0 {
+			t.Fatalf("%v: %s", args, diagnostics)
+		}
+	}
+	code, out, diagnostics := runTestCommand(root, "show")
+	want := "goal: goal\na [expanded, required]\n  a.z [open, required]\na-x [open, required]\n"
+	if code != 0 || out != want || diagnostics != "" {
+		t.Fatalf("show: exit=%d stdout=%q, want=%q stderr=%q", code, out, want, diagnostics)
+	}
+	code, out, diagnostics = runTestCommand(root, "show", "--json")
+	var shown State
+	if err := json.Unmarshal([]byte(out), &shown); err != nil {
+		t.Fatal(err)
+	}
+	if code != 0 || diagnostics != "" || len(shown.Cells) != 3 || shown.Cells[0].ID != "a" || shown.Cells[1].ID != "a-x" || shown.Cells[2].ID != "a.z" {
+		t.Fatalf("JSON order changed: exit=%d stdout=%q stderr=%q", code, out, diagnostics)
+	}
+}
+
+func TestRunInitRejectsInvalidGoalAsUsage(t *testing.T) {
+	for _, goal := range []string{"", "a\nb", "a\u2028b", strings.Repeat("a", 513)} {
+		root := t.TempDir()
+		code, out, diagnostics := runTestCommand(root, "init", goal)
+		if code != 2 || out != "" || !strings.Contains(diagnostics, "E_USAGE") {
+			t.Fatalf("init %q: exit=%d stdout=%q stderr=%q", goal, code, out, diagnostics)
+		}
+		if _, err := os.Stat(filepath.Join(root, ".mandala")); !os.IsNotExist(err) {
+			t.Fatalf("invalid init created project directory: %v", err)
+		}
+	}
+}

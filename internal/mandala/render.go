@@ -49,7 +49,7 @@ func renderShow(s State, asJSON bool) (string, error) {
 	}
 	var text strings.Builder
 	fmt.Fprintf(&text, "goal: %s\n", s.Goal)
-	for _, cell := range cells {
+	writeCell := func(cell Cell) {
 		if cell.Parent != "" {
 			text.WriteString("  ")
 		}
@@ -58,6 +58,17 @@ func renderShow(s State, asJSON bool) (string, error) {
 			kind = "optional"
 		}
 		fmt.Fprintf(&text, "%s [%s, %s]\n", cell.ID, cell.Status, kind)
+	}
+	for _, root := range cells {
+		if root.Parent != "" {
+			continue
+		}
+		writeCell(root)
+		for _, child := range cells {
+			if child.Parent == root.ID {
+				writeCell(child)
+			}
+		}
 	}
 	return text.String(), nil
 }
