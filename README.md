@@ -83,6 +83,8 @@ With no matching cells, `gaps` emits `{"schema_version":1,"gaps":[]}` in JSON mo
 
 Mandala stores one state per project in `.mandala/state.json`. `init` creates it, and completing all declared required leaves **does not** remove it. `status`, `gaps`, and `show` continue to work after completion. `clean` deletes a valid Mandala state file, preserves unrelated files in `.mandala`, and removes the directory only when it becomes empty after that deletion. Repeating `clean` when state is absent succeeds. An invalid state is retained for inspection rather than deleted.
 
+When `init` creates a Mandala project inside a Git working tree, Mandala keeps `.mandala/` local by ensuring it is ignored through the repository-local Git exclude when needed. Mandala does not modify the project's `.gitignore` or global Git ignore and configuration. Non-Git projects continue to work normally. `clean` does not remove the repository-local exclude rule.
+
 State writes use a temporary file in `.mandala`, sync and close it, then replace `state.json`. v0.1 assumes a single writer; callers must serialize concurrent mutations. This is not a power-loss durability or multi-process transaction guarantee.
 
 Mandala detects gaps only among **declared** required leaves. An empty plan has no required gap and exits `0`; that is not proof that the goal was comprehensively decomposed. `done` and `na` are user declarations, not evidence verification. There is no database, network operation, daemon, generated facet, Agent runtime, Skill, or Plugin in v0.1.
