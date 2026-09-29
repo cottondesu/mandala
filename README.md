@@ -87,7 +87,7 @@ When `init` creates a Mandala project inside a Git working tree, Mandala keeps `
 
 State writes use a temporary file in `.mandala`, sync and close it, then replace `state.json`. v0.1 assumes a single writer; callers must serialize concurrent mutations. This is not a power-loss durability or multi-process transaction guarantee.
 
-Mandala detects gaps only among **declared** required leaves. An empty plan has no required gap and exits `0`; that is not proof that the goal was comprehensively decomposed. `done` and `na` are user declarations, not evidence verification. There is no database, network operation, daemon, generated facet, Agent runtime, Skill, or Plugin in v0.1.
+Mandala detects gaps only among **declared** required leaves. An empty plan has no required gap and exits `0`; that is not proof that the goal was comprehensively decomposed. `done` and `na` are user declarations, not evidence verification. The Go CLI core has no database, network operation, daemon, generated facet, or Agent runtime. This repository optionally bundles an Agent Plugin (`plugin.json`) and Mandala Skill (`skills/mandala/SKILL.md`) to guide local CLI use; they do not change the CLI's offline, zero-network behavior.
 
 ## License
 

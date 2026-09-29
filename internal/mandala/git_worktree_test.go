@@ -77,6 +77,69 @@ func TestInitCreatesMissingExcludeFilePrivately(t *testing.T) {
 	}
 }
 
+func TestInitCreatesMissingGitInfoDirectory(t *testing.T) {
+	root := t.TempDir()
+	runFixtureGit(t, root, nil, "init", "--quiet", "--template=")
+	infoPath := filepath.Join(root, ".git", "info")
+	if _, err := os.Stat(infoPath); !os.IsNotExist(err) {
+		t.Fatalf("template-free repository already has info directory: %v", err)
+	}
+
+	if err := Init(root, newTestState(t)); err != nil {
+		t.Fatal(err)
+	}
+
+	requireStateExists(t, root)
+	contents, err := os.ReadFile(filepath.Join(infoPath, "exclude"))
+	if err != nil || string(contents) != ".mandala/\n" {
+		t.Fatalf("exclude = %q, err = %v", contents, err)
+	}
+	if status := runFixtureGit(t, root, nil, "status", "--porcelain"); status != "" {
+		t.Fatalf("git status is not clean: %q", status)
+	}
+}
+
+func TestInitRollsBackCreatedGitInfoDirectory(t *testing.T) {
+	root := t.TempDir()
+	runFixtureGit(t, root, nil, "init", "--quiet", "--template=")
+	if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("!.mandala/\n!.mandala/state.json\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	runFixtureGit(t, root, nil, "add", "--", ".gitignore")
+	runFixtureGit(t, root, nil, "commit", "--quiet", "-m", "add negation")
+	infoPath := filepath.Join(root, ".git", "info")
+
+	err := Init(root, newTestState(t))
+
+	if err == nil || !strings.Contains(err.Error(), "repository-local ignore") {
+		t.Fatalf("negation failure = %v", err)
+	}
+	if _, statErr := os.Stat(infoPath); !os.IsNotExist(statErr) {
+		t.Fatalf("failed init left created info directory: %v", statErr)
+	}
+}
+
+func TestInitRejectsSymlinkedGitInfoDirectory(t *testing.T) {
+	root := t.TempDir()
+	runFixtureGit(t, root, nil, "init", "--quiet", "--template=")
+	target := t.TempDir()
+	if err := os.Symlink(target, filepath.Join(root, ".git", "info")); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	err := Init(root, newTestState(t))
+
+	if err == nil || !strings.Contains(err.Error(), "safe directory") {
+		t.Fatalf("unsafe info directory error = %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, ".mandala")); !os.IsNotExist(statErr) {
+		t.Fatalf("failed init created project: %v", statErr)
+	}
+	if entries, readErr := os.ReadDir(target); readErr != nil || len(entries) != 0 {
+		t.Fatalf("symlink target changed: entries=%v err=%v", entries, readErr)
+	}
+}
+
 func TestInitRejectsUnsafeExcludeWithoutCreatingProject(t *testing.T) {
 	root := initFixtureRepository(t, nil)
 	excludePath := fixtureExcludePath(t, root)

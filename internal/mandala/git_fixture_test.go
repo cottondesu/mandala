@@ -26,9 +26,10 @@ func runFixtureGit(t *testing.T, root string, input []byte, args ...string) stri
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, requireGit(t), append([]string{"-C", root}, args...)...)
+	commandArgs := append([]string{"-c", "core.excludesFile=" + os.DevNull, "-C", root}, args...)
+	cmd := exec.CommandContext(ctx, requireGit(t), commandArgs...)
 	cmd.Stdin = bytes.NewReader(input)
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(sanitizeGitEnvironment(os.Environ()),
 		"GIT_AUTHOR_NAME=Mandala Test",
 		"GIT_AUTHOR_EMAIL=mandala@example.invalid",
 		"GIT_COMMITTER_NAME=Mandala Test",
@@ -49,6 +50,11 @@ func initFixtureRepository(t *testing.T, tracked map[string]string) string {
 	root := t.TempDir()
 	runFixtureGit(t, root, nil, "init", "--quiet")
 	runFixtureGit(t, root, nil, "symbolic-ref", "HEAD", "refs/heads/main")
+	excludesFile := filepath.Join(t.TempDir(), "empty-excludes")
+	if err := os.WriteFile(excludesFile, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	runFixtureGit(t, root, nil, "config", "--local", "core.excludesFile", excludesFile)
 
 	entries := make([]string, 0, len(tracked))
 	for name, content := range tracked {

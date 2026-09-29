@@ -1,47 +1,19 @@
 package mandala
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 const (
-	gitExcludeRule = ".mandala/"
-	gitStatePath   = ".mandala/state.json"
-	gitOutputLimit = 32 << 10
+	gitExcludeRule   = ".mandala/"
+	gitStatePath     = ".mandala/state.json"
+	gitStatePathspec = ":(icase,literal).mandala/state.json"
 )
-
-type limitedOutput struct {
-	data  []byte
-	limit int
-}
-
-func (output *limitedOutput) Write(data []byte) (int, error) {
-	remaining := output.limit - len(output.data)
-	if remaining > 0 {
-		if len(data) < remaining {
-			remaining = len(data)
-		}
-		output.data = append(output.data, data[:remaining]...)
-	}
-	return len(data), nil
-}
-
-func (output *limitedOutput) String() string {
-	return string(output.data)
-}
-
-type gitCommandResult struct {
-	stdout   string
-	stderr   string
-	exitCode int
-}
 
 func ensureGitLocalExclude(root string) error {
 	gitPath, err := exec.LookPath("git")
@@ -70,7 +42,15 @@ func ensureGitLocalExclude(root string) error {
 		return gitExcludeFailure("detect Git worktree: unexpected output")
 	}
 
-	ignored, err := gitIgnoresState(gitPath, root)
+	tracked, err := gitTracksState(gitPath, root)
+	if err != nil {
+		return gitExcludeFailure("check whether state is tracked: %v", err)
+	}
+	if tracked {
+		return gitExcludeFailure("%s is tracked by Git", gitStatePath)
+	}
+
+	ignored, err := gitIgnoresDirectory(gitPath, root)
 	if err != nil {
 		return gitExcludeFailure("check existing ignore rules: %v", err)
 	}
@@ -92,9 +72,12 @@ func ensureGitLocalExclude(root string) error {
 	excludePath := filepath.Join(commonDirectory, "info", "exclude")
 	change, err := appendGitExcludeRule(excludePath)
 	if err != nil {
+		if rollbackErr := change.rollback(); rollbackErr != nil {
+			return gitExcludeFailure("update repository-local exclude: %v; rollback skipped: %v", err, rollbackErr)
+		}
 		return gitExcludeFailure("update repository-local exclude: %v", err)
 	}
-	ignored, err = gitIgnoresState(gitPath, root)
+	ignored, err = gitIgnoresDirectory(gitPath, root)
 	if err != nil {
 		if rollbackErr := change.rollback(); rollbackErr != nil {
 			return gitExcludeFailure("verify repository-local ignore: %v; rollback skipped: %v", err, rollbackErr)
@@ -103,9 +86,9 @@ func ensureGitLocalExclude(root string) error {
 	}
 	if !ignored {
 		if rollbackErr := change.rollback(); rollbackErr != nil {
-			return gitExcludeFailure("verify repository-local ignore: %s remains visible to Git; rollback skipped: %v", gitStatePath, rollbackErr)
+			return gitExcludeFailure("verify repository-local ignore: %s remains visible to Git; rollback skipped: %v", gitExcludeRule, rollbackErr)
 		}
-		return gitExcludeFailure("verify repository-local ignore: %s remains visible to Git", gitStatePath)
+		return gitExcludeFailure("verify repository-local ignore: %s remains visible to Git", gitExcludeRule)
 	}
 	return nil
 }
@@ -137,8 +120,8 @@ func hasGitMarker(root string) (bool, error) {
 	}
 }
 
-func gitIgnoresState(gitPath, root string) (bool, error) {
-	result, err := runGitCommand(gitPath, root, "check-ignore", "--no-index", "-q", "--", gitStatePath)
+func gitTracksState(gitPath, root string) (bool, error) {
+	result, err := runGitCommand(gitPath, root, "ls-files", "--error-unmatch", "--", gitStatePathspec)
 	if err != nil {
 		return false, err
 	}
@@ -152,47 +135,19 @@ func gitIgnoresState(gitPath, root string) (bool, error) {
 	}
 }
 
-func runGitCommand(gitPath, root string, args ...string) (gitCommandResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	commandArgs := append([]string{"-C", root}, args...)
-	cmd := exec.CommandContext(ctx, gitPath, commandArgs...)
-	cmd.Env = make([]string, 0, len(os.Environ()))
-	for _, entry := range os.Environ() {
-		key, _, _ := strings.Cut(entry, "=")
-		switch key {
-		case "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES":
-			continue
-		default:
-			cmd.Env = append(cmd.Env, entry)
-		}
+func gitIgnoresDirectory(gitPath, root string) (bool, error) {
+	result, err := runGitCommand(gitPath, root, "check-ignore", "--no-index", "-q", "--", gitExcludeRule)
+	if err != nil {
+		return false, err
 	}
-	stdout := limitedOutput{limit: gitOutputLimit}
-	stderr := limitedOutput{limit: gitOutputLimit}
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	result := gitCommandResult{stdout: stdout.String(), stderr: stderr.String()}
-	if err == nil {
-		return result, nil
+	switch result.exitCode {
+	case 0:
+		return true, nil
+	case 1:
+		return false, nil
+	default:
+		return false, fmt.Errorf("%s", gitDiagnostic(result))
 	}
-	if ctx.Err() != nil {
-		return result, fmt.Errorf("git command timed out: %w", ctx.Err())
-	}
-	var exitError *exec.ExitError
-	if errors.As(err, &exitError) {
-		result.exitCode = exitError.ExitCode()
-		return result, nil
-	}
-	return result, fmt.Errorf("start git command: %w", err)
-}
-
-func gitDiagnostic(result gitCommandResult) string {
-	diagnostic := strings.TrimSpace(result.stderr)
-	if diagnostic == "" {
-		return fmt.Sprintf("git exited with status %d", result.exitCode)
-	}
-	return diagnostic
 }
 
 func gitExcludeFailure(format string, args ...any) error {
