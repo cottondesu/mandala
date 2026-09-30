@@ -9,27 +9,47 @@ import (
 )
 
 const rootHelp = `Usage: mandala [--project DIR] <command> [flags] [arguments]
+       mandala --version
 
 Commands: init, add, mark, done, status, gaps, show, clean
 Use "mandala <command> --help" for command syntax.
 `
 
 func Run(args []string, start string, stdout, stderr io.Writer) int {
+	return run(args, start, stdout, stderr, currentModuleVersion())
+}
+
+func run(args []string, start string, stdout, stderr io.Writer, moduleVersion string) int {
 	rootFlags := flag.NewFlagSet("mandala", flag.ContinueOnError)
 	rootFlags.SetOutput(io.Discard)
 	project := rootFlags.String("project", "", "project root directory")
-	if err := rootFlags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
+	version := rootFlags.Bool("version", false, "report CLI build version")
+	parseErr := rootFlags.Parse(args)
+	projectSpecified, versionSpecified := false, false
+	rootFlags.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "project":
+			projectSpecified = true
+		case "version":
+			versionSpecified = true
+		}
+	})
+	if versionSpecified && len(args) != 1 {
+		return writeError(stderr, problem("E_USAGE", "--version must be used alone"))
+	}
+	if parseErr != nil {
+		if errors.Is(parseErr, flag.ErrHelp) {
 			return writeResult(stdout, stderr, rootHelp, 0)
 		}
-		return writeError(stderr, problem("E_USAGE", "%v", err))
+		return writeError(stderr, problem("E_USAGE", "%v", parseErr))
 	}
-	projectSpecified := false
-	rootFlags.Visit(func(f *flag.Flag) { projectSpecified = f.Name == "project" })
+	remaining := rootFlags.Args()
+	if *version {
+		return writeResult(stdout, stderr, renderVersion(moduleVersion), 0)
+	}
 	if projectSpecified && *project == "" {
 		return writeError(stderr, problem("E_USAGE", "--project requires a directory"))
 	}
-	remaining := rootFlags.Args()
 	if len(remaining) == 0 {
 		return writeError(stderr, problem("E_USAGE", "missing command; use --help"))
 	}

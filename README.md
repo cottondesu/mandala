@@ -21,6 +21,14 @@ go build -o mandala ./cmd/mandala
 go install ./cmd/mandala
 ```
 
+Check the version embedded in the running Go binary:
+
+```sh
+mandala --version
+```
+
+It prints `mandala ` followed by the embedded main module version, preserving pseudo-versions and suffixes such as `+dirty`. If build information is unavailable or the module version is empty or `(devel)`, it prints `mandala (devel)`. Local checkout builds may also contain a version, depending on the Go toolchain. Use `--version` alone, without a command or `--project`; it requires no Mandala state, Git repository, or network access.
+
 ## Quick start
 
 ```sh
