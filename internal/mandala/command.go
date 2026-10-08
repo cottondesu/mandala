@@ -75,7 +75,7 @@ func execute(name string, args []string, start, project string) (string, int, er
 	case "gaps":
 		requiredOnly = flags.Bool("required", false, "show only required gaps")
 		jsonOutput = flags.Bool("json", false, "write JSON")
-	case "show":
+	case "status", "show":
 		jsonOutput = flags.Bool("json", false, "write JSON")
 	}
 	if err := flags.Parse(args); err != nil {
@@ -141,6 +141,10 @@ func execute(name string, args []string, start, project string) (string, int, er
 		if s.Counts().RequiredOpen > 0 {
 			code = 1
 		}
+		if *jsonOutput {
+			output, err := renderStatusJSON(s)
+			return output, code, err
+		}
 		return renderStatus(s), code, nil
 	case "gaps":
 		code := 0
@@ -166,6 +170,8 @@ func commandHelp(name string) string {
 		return "Usage: mandala [--project DIR] mark <id> <open|done|na>\n"
 	case "done":
 		return "Usage: mandala [--project DIR] done <id>\n"
+	case "status":
+		return "Usage: mandala [--project DIR] status [--json]\n"
 	case "gaps":
 		return "Usage: mandala [--project DIR] gaps [--required] [--json]\n"
 	case "show":

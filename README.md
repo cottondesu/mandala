@@ -60,7 +60,7 @@ Adding children expands `security`, so its open leaves become the gaps. `done` i
 | `add [--optional] <id>` | Add a cell; children inherit an optional parent's optionality |
 | `mark <id> <open\|done\|na>` | Set a leaf's status |
 | `done <id>` | Mark a leaf done |
-| `status` | Show cell counts and required gap count |
+| `status [--json]` | Show cell counts and required gap count |
 | `gaps [--required] [--json]` | List open leaf cells |
 | `show [--json]` | Show the complete sparse tree |
 | `clean` | Remove Mandala's valid `state.json` explicitly |
@@ -78,6 +78,16 @@ stdout contains requested results; stderr contains errors. Mutating commands pro
 | `0` | Success; for `status` and `gaps`, no required gap |
 | `1` | `status` or `gaps` found at least one required gap |
 | `2` | Usage, project, state, or I/O error; stdout is empty |
+
+`status --json` emits compact JSON with exactly one trailing newline, including all zero-valued counts. `--json` is a command-local flag; an explicit project is selected with `mandala --project DIR status --json`. `--json=false` retains the existing text output. Status is read-only and emits valid JSON even when required gaps make it exit `1`; optional-only gaps exit `0`.
+
+For a plan with one expanded group, three required leaves and two optional leaves:
+
+```json
+{"schema_version":1,"goal":"Implement OAuth","cells":6,"groups":1,"required":{"open":2,"done":1,"na":0},"optional":{"open":1,"done":1,"na":0},"required_gaps":2}
+```
+
+The status output schema version is `1`, independent of the state-file schema. `cells` includes expanded parents; `groups` counts those parents, while `required` and `optional` count leaves only. Thus `cells` equals `groups` plus all leaf counts, and `required_gaps` equals `required.open`. An empty plan emits zero for every count and exits `0`; zero declared gaps does not prove comprehensive coverage or implementation quality.
 
 `gaps --json` emits valid JSON even when it exits `1`:
 

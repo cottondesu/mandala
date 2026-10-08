@@ -6,6 +6,42 @@ import (
 	"strings"
 )
 
+const statusOutputSchemaVersion = 1
+
+type statusResponse struct {
+	SchemaVersion int          `json:"schema_version"`
+	Goal          string       `json:"goal"`
+	Cells         int          `json:"cells"`
+	Groups        int          `json:"groups"`
+	Required      statusCounts `json:"required"`
+	Optional      statusCounts `json:"optional"`
+	RequiredGaps  int          `json:"required_gaps"`
+}
+
+type statusCounts struct {
+	Open int `json:"open"`
+	Done int `json:"done"`
+	NA   int `json:"na"`
+}
+
+func renderStatusJSON(s State) (string, error) {
+	c := s.Counts()
+	response := statusResponse{
+		SchemaVersion: statusOutputSchemaVersion,
+		Goal:          s.Goal,
+		Cells:         len(s.Cells),
+		Groups:        c.Groups,
+		Required:      statusCounts{Open: c.RequiredOpen, Done: c.RequiredDone, NA: c.RequiredNA},
+		Optional:      statusCounts{Open: c.OptionalOpen, Done: c.OptionalDone, NA: c.OptionalNA},
+		RequiredGaps:  c.RequiredOpen,
+	}
+	data, err := json.Marshal(response)
+	if err != nil {
+		return "", fmt.Errorf("encode status: %w", err)
+	}
+	return string(data) + "\n", nil
+}
+
 func renderStatus(s State) string {
 	c := s.Counts()
 	return fmt.Sprintf("goal: %s\ncells: %d\ngroups: %d\nrequired: open=%d done=%d na=%d\noptional: open=%d done=%d na=%d\nrequired gaps: %d\n",
