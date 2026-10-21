@@ -1,0 +1,268 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GOTOOLCHAIN: local
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: Test - ${{ matrix.os }} - Go ${{ matrix.go }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+        go: ['1.26.x', '1.27.x']
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - name: Report Go version
+        run: go version
+      - name: Report GOOS and GOARCH
+        run: go env GOOS GOARCH
+      - name: Verify selected Go minor version
+        env:
+          EXPECTED_GO_MINOR: ${{ matrix.go }}
+        run: |
+          expected="${EXPECTED_GO_MINOR%.x}"
+          actual="$(go env GOVERSION)"
+          case "$actual" in
+            "go${expected}"|"go${expected}".*)
+              echo "Selected ${actual} matches requested minor version ${expected}"
+              ;;
+            *)
+              echo "Expected Go minor version ${expected} but selected ${actual}" >&2
+              exit 1
+              ;;
+          esac
+      - name: Verify macos-15 uses arm64
+        if: matrix.os == 'macos-15'
+        run: |
+          actual="$(go env GOARCH)"
+          if [ "$actual" != "arm64" ]; then
+            echo "Expected GOARCH arm64 on macos-15 but selected ${actual}" >&2
+            exit 1
+          fi
+      - name: Run tests
+        run: go test -count=1 -shuffle=on ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Build
+        run: go build ./...
+
+  race:
+    name: Race - ubuntu-24.04 - Go ${{ matrix.go }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.26.x', '1.27.x']
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - name: Report and verify toolchain
+        env:
+          EXPECTED_GO_MINOR: ${{ matrix.go }}
+        run: |
+          go version
+          go env GOOS GOARCH
+          expected="${EXPECTED_GO_MINOR%.x}"
+          actual="$(go env GOVERSION)"
+          case "$actual" in
+            "go${expected}"|"go${expected}".*)
+              echo "Selected ${actual} matches requested minor version ${expected}"
+              ;;
+            *)
+              echo "Expected Go minor version ${expected} but selected ${actual}" >&2
+              exit 1
+              ;;
+          esac
+      - name: Run race-enabled tests
+        run: go test -race -shuffle=on -count=1 ./...
+
+  smoke:
+    name: CLI smoke - ubuntu-24.04 - Go ${{ matrix.go }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.26.x', '1.27.x']
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+          cache: false
+      - name: Report and verify toolchain
+        env:
+          EXPECTED_GO_MINOR: ${{ matrix.go }}
+        run: |
+          go version
+          go env GOOS GOARCH
+          expected="${EXPECTED_GO_MINOR%.x}"
+          actual="$(go env GOVERSION)"
+          case "$actual" in
+            "go${expected}"|"go${expected}".*)
+              echo "Selected ${actual} matches requested minor version ${expected}"
+              ;;
+            *)
+              echo "Expected Go minor version ${expected} but selected ${actual}" >&2
+              exit 1
+              ;;
+          esac
+      - name: Verify clean checkout before smoke run
+        run: |
+          status="$(git status --porcelain)"
+          if [ -n "$status" ]; then
+            echo "Checkout is not clean before the smoke run:" >&2
+            printf '%s\n' "$status" >&2
+            exit 1
+          fi
+      - name: Run CLI smoke test
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          import tempfile
+
+          repo = os.environ['GITHUB_WORKSPACE']
+
+
+          def die(message):
+              sys.stderr.write('smoke: ' + message + '\n')
+              sys.exit(1)
+
+
+          def run(command, cwd=None):
+              return subprocess.run(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+          def report(label, result):
+              sys.stderr.write(label + '\n')
+              sys.stderr.write('  exit code: ' + str(result.returncode) + '\n')
+              sys.stderr.write('  stdout: ' + repr(result.stdout) + '\n')
+              sys.stderr.write('  stderr: ' + repr(result.stderr) + '\n')
+
+
+          with tempfile.TemporaryDirectory(prefix='mandala-smoke-bin-') as bin_dir:
+              binary = os.path.join(bin_dir, 'mandala')
+
+              built = run(['go', 'build', '-o', binary, './cmd/mandala'], cwd=repo)
+              if built.returncode != 0:
+                  report('go build failed', built)
+                  die('go build must succeed')
+
+              version = run([binary, '--version'])
+              if version.returncode != 0:
+                  report('--version failed', version)
+                  die('--version must exit 0')
+              if version.stderr:
+                  report('--version wrote to stderr', version)
+                  die('--version stderr must be empty')
+              if not version.stdout.startswith(b'mandala '):
+                  report('--version output unexpected', version)
+                  die('--version stdout must start with the mandala prefix')
+              if not version.stdout.endswith(b'\n'):
+                  report('--version output unexpected', version)
+                  die('--version stdout must end with a newline')
+
+              with tempfile.TemporaryDirectory(prefix='mandala-smoke-project-') as project_dir:
+                  walker = os.path.abspath(project_dir)
+                  while True:
+                      stray = os.path.join(walker, '.mandala')
+                      if os.path.exists(stray):
+                          die('unexpected ancestor state directory at ' + stray)
+                      parent = os.path.dirname(walker)
+                      if parent == walker:
+                          break
+                      walker = parent
+
+                  cases = [
+                      (['--project', project_dir, 'init', 'CI smoke'], 0, b''),
+                      (['--project', project_dir, 'add', 'tests'], 0, b''),
+                      (['--project', project_dir, 'status', '--json'], 1,
+                       b'{"schema_version":1,"goal":"CI smoke","cells":1,"groups":0,'
+                       b'"required":{"open":1,"done":0,"na":0},'
+                       b'"optional":{"open":0,"done":0,"na":0},"required_gaps":1}\n'),
+                      (['--project', project_dir, 'gaps', '--required', '--json'], 1,
+                       b'{"schema_version":1,"gaps":[{"id":"tests","required":true}]}\n'),
+                      (['--project', project_dir, 'done', 'tests'], 0, b''),
+                      (['--project', project_dir, 'status', '--json'], 0,
+                       b'{"schema_version":1,"goal":"CI smoke","cells":1,"groups":0,'
+                       b'"required":{"open":0,"done":1,"na":0},'
+                       b'"optional":{"open":0,"done":0,"na":0},"required_gaps":0}\n'),
+                      (['--project', project_dir, 'gaps', '--required', '--json'], 0,
+                       b'{"schema_version":1,"gaps":[]}\n'),
+                      (['--project', project_dir, 'show', '--json'], 0,
+                       b'{"schema_version":1,"goal":"CI smoke","cells":['
+                       b'{"id":"tests","parent":"","status":"done","required":true}]}\n'),
+                  ]
+
+                  for index, (_, _, want_stdout) in enumerate(cases, start=1):
+                      if want_stdout:
+                          try:
+                              json.loads(want_stdout.decode('utf-8'))
+                          except ValueError as error:
+                              die('case ' + str(index) + ' expected stdout is not valid JSON: ' + str(error))
+
+                  for index, (args, want_code, want_stdout) in enumerate(cases, start=1):
+                      label = 'case ' + str(index) + ': mandala ' + ' '.join(args)
+                      result = run([binary] + args, cwd=project_dir)
+                      if result.stderr:
+                          report(label + ' wrote to stderr', result)
+                          die('stderr must be empty for expected results')
+                      if result.returncode != want_code:
+                          report(label + ' exit code mismatch', result)
+                          die('expected exit code ' + str(want_code) + ' but got ' + str(result.returncode))
+                      if result.stdout != want_stdout:
+                          report(label + ' stdout mismatch', result)
+                          die('expected stdout ' + repr(want_stdout) + ' but got ' + repr(result.stdout))
+                      print('case ' + str(index) + ' ok: mandala ' + ' '.join(args))
+
+          print('CLI smoke test passed')
+          PY
+      - name: Verify clean checkout after smoke run
+        run: |
+          status="$(git status --porcelain)"
+          if [ -n "$status" ]; then
+            echo "Checkout is not clean after the smoke run:" >&2
+            printf '%s\n' "$status" >&2
+            exit 1
+          fi
