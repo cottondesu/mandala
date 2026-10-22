@@ -26,7 +26,12 @@ func runFixtureGit(t *testing.T, root string, input []byte, args ...string) stri
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	commandArgs := append([]string{"-c", "core.excludesFile=" + os.DevNull, "-C", root}, args...)
+	// core.autocrlf=false keeps fixture hashing independent of the host's
+	// line-ending conversion (Windows defaults to true and its warnings
+	// would otherwise leak into machine-readable stdout); the explicitly
+	// empty core.excludesFile neutralizes config-derived global excludes
+	// on every platform because Git rejects "NUL" on Windows.
+	commandArgs := append([]string{"-c", "core.autocrlf=false", "-c", "core.excludesFile=", "-C", root}, args...)
 	cmd := exec.CommandContext(ctx, requireGit(t), commandArgs...)
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Env = append(sanitizeGitEnvironment(os.Environ()),
@@ -35,14 +40,17 @@ func runFixtureGit(t *testing.T, root string, input []byte, args ...string) stri
 		"GIT_COMMITTER_NAME=Mandala Test",
 		"GIT_COMMITTER_EMAIL=mandala@example.invalid",
 	)
-	output, err := cmd.CombinedOutput()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
 	if ctx.Err() != nil {
 		t.Fatalf("git %v timed out: %v", args, ctx.Err())
 	}
 	if err != nil {
-		t.Fatalf("git %v: %v: %s", args, err, output)
+		t.Fatalf("git %v: %v: %s", args, err, stderr.String())
 	}
-	return strings.TrimSpace(string(output))
+	return strings.TrimSpace(stdout.String())
 }
 
 func initFixtureRepository(t *testing.T, tracked map[string]string) string {

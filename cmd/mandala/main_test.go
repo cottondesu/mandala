@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,11 @@ import (
 
 func buildCLI(t *testing.T) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "mandala")
+	name := "mandala"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	path := filepath.Join(t.TempDir(), name)
 	cmd := exec.Command("go", "build", "-o", path, ".")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v: %s", err, output)
