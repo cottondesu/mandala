@@ -8,26 +8,39 @@ Mandala tracks the cells you declare for a goal and reports open required leaves
 
 ## Install
 
-Requires Go 1.26 or newer. Install the latest published version:
+mandala requires Go 1.26 or newer.
+
+Install the published v0.4.0 release:
+
+```sh
+go install github.com/cottondesu/mandala/cmd/mandala@v0.4.0
+```
+
+Or install the latest published release:
 
 ```sh
 go install github.com/cottondesu/mandala/cmd/mandala@latest
 ```
 
-From a checkout, you can instead build a local binary or install it into your Go binary directory:
+`@v0.4.0` always installs exactly v0.4.0; `@latest` resolves to the newest published release, and what it resolves to changes as releases are published.
+
+A successful `go install` places the binary in `GOBIN` (if set) or the `bin` directory of the first `GOPATH` entry, which may not be on your `PATH`. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for `PATH` setup, stale or duplicate binary resolution, isolated verification, and troubleshooting for `404 Not Found` and checksum errors.
+
+From a local checkout, the baseline supported commands are (macOS and Linux):
 
 ```sh
 go build -o mandala ./cmd/mandala
 go install ./cmd/mandala
 ```
 
-Check the version embedded in the running Go binary:
+Windows PowerShell:
 
-```sh
-mandala --version
+```powershell
+go build -o mandala.exe .\cmd\mandala
+go install .\cmd\mandala
 ```
 
-It prints `mandala ` followed by the embedded main module version, preserving pseudo-versions and suffixes such as `+dirty`. If build information is unavailable or the module version is empty or `(devel)`, it prints `mandala (devel)`. Local checkout builds may also contain a version, depending on the Go toolchain. Use `--version` alone, without a command or `--project`; it requires no Mandala state, Git repository, or network access.
+Version reporting: `mandala --version` prints the version embedded from the main module. Pseudo-versions are preserved, and build metadata such as `+dirty` is preserved when present. When the embedded version information is absent, empty, or `(devel)`, it prints `mandala (devel)`. A binary built from a local checkout can report a different version depending on the Go toolchain and build context, while `go install` at an exact tag reports that tag. `--version` alone, without a command and without `--project`, needs no project state, no Git repository, and no network access.
 
 ## Quick start
 
@@ -105,7 +118,11 @@ When `init` creates a Mandala project inside a Git working tree, Mandala keeps `
 
 State writes use a temporary file in `.mandala`, sync and close it, then replace `state.json`. v0.1 assumes a single writer; callers must serialize concurrent mutations. This is not a power-loss durability or multi-process transaction guarantee.
 
-Mandala detects gaps only among **declared** required leaves. An empty plan has no required gap and exits `0`; that is not proof that the goal was comprehensively decomposed. `done` and `na` are user declarations, not evidence verification. The Go CLI core has no database, network operation, daemon, generated facet, or Agent runtime. This repository optionally bundles an Agent Plugin (`plugin.json`) and Mandala Skill (`skills/mandala/SKILL.md`) to guide local CLI use; they do not change the CLI's offline, zero-network behavior.
+Mandala detects gaps only among **declared** required leaves. An empty plan has no required gap and exits `0`; that is not proof that the goal was comprehensively decomposed. `done` and `na` are user declarations, not evidence verification. The Go CLI core has no database, network operation, daemon, generated facet, or Agent runtime.
+
+## CI and releases
+
+GitHub Actions is configured to validate every pull request (including documentation-only changes) and every push to `main`: a six-job test matrix (ubuntu-24.04, macos-15, windows-2025 x Go 1.26.x and 1.27.x) running version/environment checks, `go test`, `go vet`, and `go build`; Ubuntu jobs running the race detector for both Go versions; and an Ubuntu CLI smoke test that builds the real binary and drives it against a temporary project. This describes configured validation, not observed results; see [.github/workflows/ci.yml](.github/workflows/ci.yml) for the configuration and the repository's Actions runs for what actually passed on any given commit. Releases are manual and source-only; the procedure and its evidence gates are documented in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## License
 

@@ -41,7 +41,10 @@ type gitCommandResult struct {
 func runGitCommand(gitPath, root string, args ...string) (gitCommandResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	commandArgs := append([]string{"-c", "core.excludesFile=" + os.DevNull, "-C", root}, args...)
+	// An explicitly empty core.excludesFile disables config-derived global
+	// excludes on every platform; os.DevNull ("NUL") is rejected by Git on
+	// Windows. Repository-local .gitignore and info/exclude stay effective.
+	commandArgs := append([]string{"-c", "core.excludesFile=", "-C", root}, args...)
 	cmd := exec.CommandContext(ctx, gitPath, commandArgs...)
 	cmd.Env = sanitizeGitEnvironment(os.Environ())
 	stdout := limitedOutput{limit: gitOutputLimit}
