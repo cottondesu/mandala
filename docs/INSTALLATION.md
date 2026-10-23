@@ -10,7 +10,7 @@ mandala is distributed as Go source. Published versions are installed from the m
 
 ## Install a published release
 
-Install exactly the currently published release, v0.4.0:
+Install exactly one fixed published version - v0.4.0 in this example:
 
 ```sh
 go install github.com/cottondesu/mandala/cmd/mandala@v0.4.0
@@ -25,7 +25,7 @@ go install github.com/cottondesu/mandala/cmd/mandala@latest
 - `@v0.4.0` always installs exactly v0.4.0; pin an exact version when you want reproducible setups.
 - `@latest` resolves to the newest published stable release, and what it resolves to changes over time as new releases are published.
 
-v0.4.1 is an unpublished candidate at the time of writing; do not assume `@v0.4.1` is installable until its tag actually exists on GitHub.
+Do not assume an unpublished version is installable: a version is installable only once its tag actually exists on GitHub.
 
 A successful `go install` only downloads, builds, and places the binary. It does not guarantee that the `mandala` command resolves in your shell: the install directory may not be on your `PATH`. See the next section.
 
@@ -240,7 +240,7 @@ A binary built from a local checkout can print any of these depending on the Go 
 - proxy.golang.org distributes module metadata and source.
 - sum.golang.org records and checks module integrity.
 
-A published GitHub Release is not the same thing as an installable module: the proxy resolves Git tags, and it may have cached a negative answer from a query made before the tag was pushed. At the same time, not every `404` is a caching problem - the tag may simply not exist yet (for example, the unpublished v0.4.1).
+A published GitHub Release is not the same thing as an installable module: the proxy resolves Git tags, and it may have cached a negative answer from a query made before the tag was pushed. At the same time, not every `404` is a caching problem - the tag may simply not exist yet (for example, a not-yet-published candidate version).
 
 ### Common symptoms
 

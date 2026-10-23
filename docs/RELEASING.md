@@ -2,7 +2,7 @@
 
 Manual, human-controlled, source-only releases. This document is a procedure: **none of the publication commands below were executed as part of writing it**, and nothing in the repository auto-releases. A human performs each step and records the evidence.
 
-Current candidate: **v0.4.1** (not yet published). Baseline: v0.4.0 at commit 2fd15fb1ae32d0e13b6d9a1ed8107eb3f3a9deb9. Candidate scope: CI and documentation only - no new features (nothing planned for v0.5.0), CLI behavior and state schema unchanged. Confirm the actual current tag state before starting; if any fact below is stale, stop and update this document first.
+Current candidate: **v0.4.1** (not yet published). Baseline: v0.4.0 at commit 2fd15fb1ae32d0e13b6d9a1ed8107eb3f3a9deb9. Candidate scope: a maintenance release containing CI infrastructure, installation and release documentation, and minimal Windows compatibility fixes for CLI test execution and Git handling - no CLI features, command or flag changes, JSON or state schema changes, or new dependencies; nothing planned for v0.5.0 is included, and the CLI contract and state schema are unchanged from v0.4.0. Confirm the actual current tag state before starting; if any fact below is stale, stop and update this document first.
 
 ## Evidence gates
 
@@ -119,7 +119,7 @@ Re-verify the recorded candidate immediately before tagging. Every guard must pa
 Create an annotated tag on the explicit intended commit, after human authorization:
 
 ```sh
-git tag -a v0.4.1 -m 'mandala v0.4.1 (maintenance: CI and documentation)' "$CANDIDATE_SHA"
+git tag -a v0.4.1 -m 'mandala v0.4.1 (maintenance: CI, docs, Windows compatibility)' "$CANDIDATE_SHA"
 ```
 
 Verify the tag object and target with executable guards, not by eyeballing output. The type must be `tag` (annotated, not lightweight). The tag object SHA and the peeled commit SHA are two different values. Each query runs as a standalone assignment before any result is tested or printed, so a failing query stops the block under `set -euo pipefail` instead of being hidden inside a substitution or `echo`; the values are printed with `printf` after capture:
@@ -149,7 +149,7 @@ git push origin 'refs/tags/v0.4.1'
 ## Step 6 - GitHub Release (RELEASE_PUBLISHED)
 
 1. On GitHub, create a **draft** release targeting the verified tag `v0.4.1`.
-2. Review the notes. They state: scope is CI and documentation; the CLI contract and state schema are unchanged from v0.4.0; no new features; source-only release.
+2. Review the notes. They state: scope is CI quality infrastructure, installation and release documentation, Windows CLI integration-test compatibility, Windows Git exclude handling, and deterministic Git fixtures across platforms; the CLI contract and state schema are unchanged from v0.4.0; no new features, no new dependencies; source-only release.
 3. Set **pre-release: off** (maintenance release).
 4. Choose **Latest** deliberately; it is a human decision, not a default.
 5. A human clicks **Publish**.
