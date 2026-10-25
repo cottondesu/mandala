@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -227,33 +228,46 @@ func TestCLIBatchExistingCommandsUnchanged(t *testing.T) {
 	}
 }
 
+// batchREADMEExamples extracts the ```text and ```json example blocks from
+// the README batch output section. CRLF is normalized to LF before any
+// extraction: Git for Windows checks text files out with CRLF by default
+// (core.autocrlf=true), while the CLI emits LF-only output on every platform.
+func batchREADMEExamples(doc string) (text, jsonExample string, err error) {
+	doc = strings.ReplaceAll(doc, "\r\n", "\n")
+	_, section, ok := strings.Cut(doc, "### Batch output")
+	if !ok {
+		return "", "", errors.New("README batch output section is missing")
+	}
+	_, textBlock, ok := strings.Cut(section, "```text\n")
+	if !ok {
+		return "", "", errors.New("README text example is missing")
+	}
+	text, _, ok = strings.Cut(textBlock, "```")
+	if !ok {
+		return "", "", errors.New("README text fence is not closed")
+	}
+	_, jsonBlock, ok := strings.Cut(section, "```json\n")
+	if !ok {
+		return "", "", errors.New("README JSON example is missing")
+	}
+	jsonExample, _, ok = strings.Cut(jsonBlock, "```")
+	if !ok {
+		return "", "", errors.New("README JSON fence is not closed")
+	}
+	return text, jsonExample, nil
+}
+
 func TestCLIBatchREADMEExample(t *testing.T) {
 	doc, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, section, ok := strings.Cut(string(doc), "### Batch output")
-	if !ok {
-		t.Fatal("README batch output section is missing")
-	}
-	_, textBlock, ok := strings.Cut(section, "```text\n")
-	if !ok {
-		t.Fatal("README text example is missing")
-	}
-	wantText, _, ok := strings.Cut(textBlock, "```")
-	if !ok {
-		t.Fatal("README text fence is not closed")
-	}
-	_, jsonBlock, ok := strings.Cut(section, "```json\n")
-	if !ok {
-		t.Fatal("README JSON example is missing")
-	}
-	wantJSON, _, ok := strings.Cut(jsonBlock, "```")
-	if !ok {
-		t.Fatal("README JSON fence is not closed")
+	wantText, readmeJSON, err := batchREADMEExamples(string(doc))
+	if err != nil {
+		t.Fatal(err)
 	}
 	var compact bytes.Buffer
-	if err := json.Compact(&compact, []byte(wantJSON)); err != nil {
+	if err := json.Compact(&compact, []byte(readmeJSON)); err != nil {
 		t.Fatal(err)
 	}
 	binary := buildCLI(t)
@@ -272,6 +286,31 @@ func TestCLIBatchREADMEExample(t *testing.T) {
 		code, out, diagnostics := invokeCLIStdin(t, binary, root, input, args...)
 		if code != 0 || diagnostics != "" || out != want {
 			t.Fatalf("README example json=%v: exit=%d stderr=%q\ngot=%q\nwant=%q", asJSON, code, diagnostics, out, want)
+		}
+	}
+}
+
+// TestBatchREADMEExamplesAcceptCRLF guards the README example extraction
+// against CRLF checkouts (Git for Windows with core.autocrlf=true). The real
+// README is LF on Linux and macOS runners, so the CRLF path would otherwise
+// never execute there — exactly how the Windows-only CI failure escaped.
+func TestBatchREADMEExamplesAcceptCRLF(t *testing.T) {
+	const doc = "### Batch output\n\n```text\nbatch dry-run: 1 operation(s), 0 changed cell(s)\n```\n\n```json\n{\"changed\": false}\n```\n"
+	const wantText = "batch dry-run: 1 operation(s), 0 changed cell(s)\n"
+	const wantJSON = "{\"changed\": false}\n"
+	for _, tc := range []struct{ name, doc string }{
+		{"LF", doc},
+		{"CRLF", strings.ReplaceAll(doc, "\n", "\r\n")},
+	} {
+		text, jsonExample, err := batchREADMEExamples(tc.doc)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if text != wantText {
+			t.Fatalf("%s text example:\n got=%q\nwant=%q", tc.name, text, wantText)
+		}
+		if jsonExample != wantJSON {
+			t.Fatalf("%s JSON example:\n got=%q\nwant=%q", tc.name, jsonExample, wantJSON)
 		}
 	}
 }
