@@ -1,6 +1,6 @@
 # mandala v0.5.0 release notes (DRAFT — not yet published)
 
-Status: **draft for the v0.5.0 candidate.** v0.5.0 has not been tagged, released, or published. This note is written before publication; the baseline is v0.4.1 (commit `bdff5992e2935d1a55919ec58e111cdaa824f7fc`). Release execution follows [RELEASING.md](RELEASING.md); nothing below implies any release step has run.
+Status at preparation time: **draft for the v0.5.0 candidate.** At that time v0.5.0 has not been tagged, released, or published. This repository draft is a frozen preparation snapshot after candidate selection; it does not track later publication status. The baseline is v0.4.1 (commit `bdff5992e2935d1a55919ec58e111cdaa824f7fc`). Release execution follows [RELEASING.md](RELEASING.md); nothing below implies any release step has run. Actual gate results and publication status belong in external comments on [merged PR #6](https://github.com/cottondesu/mandala/pull/6) and the GitHub Release description.
 
 ## Scope
 
@@ -32,4 +32,18 @@ One feature theme: atomic batch operations for human and coding-agent workflows,
 
 ## Evidence at draft time
 
-Local: `go test -count=1 ./...`, `go test -shuffle=on -count=1 ./...`, `go test -race -shuffle=on -count=1 ./...`, `go vet ./...`, `go build ./...`, `git diff --check` all pass on the candidate tree with both the Go 1.26.10 and 1.27 toolchains; mutation checks (the 7 specified defects plus the 5 audit-round-2 survivors are each caught by the batch tests); CI smoke gained byte-exact batch cases with `actionlint` clean. Independent review and remote CI on the exact candidate SHA remain to be recorded per the RELEASING.md gates before any publication.
+### Historical evidence (verified)
+
+- Implementation: PR [#5](https://github.com/cottondesu/mandala/pull/5) `feat: add atomic batch operations and deterministic dry-run`, **merged** to `main` on 2026-10-25 (merge commit `a56576891ec7006c3ae65609f48763dbc1245fe7`).
+- PR commits: feature implementation `2a680b9c1b26e44203792239d903acc70de9614e`; Windows CRLF test fix `1658865157009d13bfda1a4d315411629dac073c` (PR HEAD).
+- Independent audit (Claude) of the implementation across review rounds: final state **0 BLOCKER / 0 MAJOR**; MINOR-4 recorded as a human-approved exception. The Windows CRLF fix was audited and passed.
+- Remote CI on the PR HEAD SHA `1658865`: run [40158802643](https://github.com/cottondesu/mandala/actions/runs/40158802643) — **10/10 jobs success**.
+- Remote CI on the main merge SHA `a565768`: run [40191966945](https://github.com/cottondesu/mandala/actions/runs/40191966945) — **10/10 jobs success**.
+- MINOR-4 (Windows skip of `TestBatchSaveFailure`): human exception **approved for v0.5.0 only** ([comment](https://github.com/cottondesu/mandala/pull/5#issuecomment-6397343300), 2026-10-25). That approval explicitly does **not** authorize the release itself.
+- Local (pre-merge): `go test -count=1 ./...`, `go test -shuffle=on -count=1 ./...`, `go test -race -shuffle=on -count=1 ./...`, `go vet ./...`, `go build ./...`, `git diff --check` all pass on the candidate tree with both the Go 1.26.10 and 1.27 toolchains; mutation checks (the 7 specified defects plus the 5 audit-round-2 survivors are each caught by the batch tests); CI smoke gained byte-exact batch cases with `actionlint` clean.
+
+### Final-candidate gates (not yet run)
+
+The evidence above covers PR #5's commits and merge SHA, not the final release candidate. Select the final SHA from main after PR #6 merges, then execute all eight gates in [RELEASING.md](RELEASING.md) against that same SHA. No historical CI, including PR #6 run 40197731240 on `0c4c0868`, satisfies a gate on a later SHA.
+
+Record actual gate results, full candidate SHA, human release approval, and publication outcomes in new external comments on merged PR #6. The tracked [evidence snapshot](release-evidence-v0.5.0.md) retains its initial eight NOT RUN rows. Do not edit either repository document after candidate selection. Compose the GitHub Release description from this draft's feature content and the external evidence. Update only that GitHub description with actual gate results and comment URLs. Install verification follows publication; mark it pending until completed, then link its external record. Completing the Release description requires no source commit and does not change the candidate SHA.

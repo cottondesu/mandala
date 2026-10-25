@@ -10,10 +10,10 @@ Mandala tracks the cells you declare for a goal and reports open required leaves
 
 mandala requires Go 1.26 or newer.
 
-Install the published v0.4.0 release:
+Install the published v0.4.1 release:
 
 ```sh
-go install github.com/cottondesu/mandala/cmd/mandala@v0.4.0
+go install github.com/cottondesu/mandala/cmd/mandala@v0.4.1
 ```
 
 Or install the latest published release:
@@ -22,7 +22,7 @@ Or install the latest published release:
 go install github.com/cottondesu/mandala/cmd/mandala@latest
 ```
 
-`@v0.4.0` always installs exactly v0.4.0; `@latest` resolves to the newest published release, and what it resolves to changes as releases are published.
+`@v0.4.1` always installs exactly v0.4.1; `@latest` resolves to the newest published release, and what it resolves to changes as releases are published.
 
 A successful `go install` places the binary in `GOBIN` (if set) or the `bin` directory of the first `GOPATH` entry, which may not be on your `PATH`. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for `PATH` setup, stale or duplicate binary resolution, isolated verification, and troubleshooting for `404 Not Found` and checksum errors.
 

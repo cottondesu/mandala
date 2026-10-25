@@ -10,10 +10,10 @@ mandala is distributed as Go source. Published versions are installed from the m
 
 ## Install a published release
 
-Install exactly one fixed published version - v0.4.0 in this example:
+Install exactly one fixed published version - v0.4.1 in this example:
 
 ```sh
-go install github.com/cottondesu/mandala/cmd/mandala@v0.4.0
+go install github.com/cottondesu/mandala/cmd/mandala@v0.4.1
 ```
 
 Or install whatever release is currently newest:
@@ -22,7 +22,7 @@ Or install whatever release is currently newest:
 go install github.com/cottondesu/mandala/cmd/mandala@latest
 ```
 
-- `@v0.4.0` always installs exactly v0.4.0; pin an exact version when you want reproducible setups.
+- `@v0.4.1` always installs exactly v0.4.1; pin an exact version when you want reproducible setups.
 - `@latest` resolves to the newest published stable release, and what it resolves to changes over time as new releases are published.
 
 Do not assume an unpublished version is installable: a version is installable only once its tag actually exists on GitHub.
@@ -177,7 +177,7 @@ macOS/Linux (bash, zsh):
   set -e
   VERIFY_GOBIN="$(mktemp -d)"
   trap 'rm -rf -- "$VERIFY_GOBIN"' EXIT
-  GOBIN="$VERIFY_GOBIN" go install github.com/cottondesu/mandala/cmd/mandala@v0.4.0
+  GOBIN="$VERIFY_GOBIN" go install github.com/cottondesu/mandala/cmd/mandala@v0.4.1
   "$VERIFY_GOBIN/mandala" --version
 )
 ```
@@ -193,7 +193,7 @@ $verifyGobin = Join-Path ([System.IO.Path]::GetTempPath()) ("mandala-verify-" + 
 New-Item -ItemType Directory -Path $verifyGobin | Out-Null
 try {
     $env:GOBIN = $verifyGobin
-    go install github.com/cottondesu/mandala/cmd/mandala@v0.4.0
+    go install github.com/cottondesu/mandala/cmd/mandala@v0.4.1
     if ($LASTEXITCODE -ne 0) { throw "go install failed with exit code $LASTEXITCODE" }
     & (Join-Path $verifyGobin 'mandala.exe') --version
     if ($LASTEXITCODE -ne 0) { throw "mandala --version failed with exit code $LASTEXITCODE" }
@@ -226,7 +226,7 @@ This creates a binary in the current directory and does not affect any binary in
 
 `mandala --version` prints the version embedded from the main module:
 
-- Built by `go install` at a published tag, it prints that tag, for example `mandala v0.4.0`.
+- Built by `go install` at a published tag, it prints that tag, for example `mandala v0.4.1`.
 - Pseudo-versions such as `v0.0.0-20260101120000-abcdefabcdef` are preserved.
 - Build metadata such as `+dirty` is preserved when present.
 - When the embedded version is absent, empty, or `(devel)`, it prints `mandala (devel)`.
@@ -258,7 +258,7 @@ These are non-publishing diagnostics: they modify neither the repository nor its
 3. **Module and package paths are correct.** The module path is `github.com/cottondesu/mandala`; the `go install` target additionally carries the command package path `github.com/cottondesu/mandala/cmd/mandala`. A typo in either produces download or resolution errors. Verify the module root resolves:
 
    ```sh
-   go list -m github.com/cottondesu/mandala@v0.4.0
+   go list -m github.com/cottondesu/mandala@v0.4.1
    ```
 
 4. **Module proxy state.** Browse https://proxy.golang.org/github.com/cottondesu/mandala/@v/list, or run:
@@ -267,7 +267,7 @@ These are non-publishing diagnostics: they modify neither the repository nor its
    go list -m -versions github.com/cottondesu/mandala
    ```
 
-5. **Checksum database.** Browse https://sum.golang.org/lookup/github.com/cottondesu/mandala@v0.4.0.
+5. **Checksum database.** Browse https://sum.golang.org/lookup/github.com/cottondesu/mandala@v0.4.1.
 6. **Local network.** Check `go env GOPROXY`; retry later or from another network if the proxy or checksum database is temporarily unreachable.
 7. **Distribution cache.** If steps 1-2 confirm the tag exists but the proxy still returns `404`, the proxy may be serving a cached negative answer from a query made before the tag was published. Recheck the metadata endpoints (step 4), the checksum database (step 5), your network (step 6), and the publication state (step 8). If the evidence remains unclear, stop with the cause unresolved rather than guessing; do not change integrity settings or the tag.
 8. **Publication state.** Confirm the release actually finished (tag pushed and visible) before drawing conclusions. Publication of a GitHub Release does not by itself make a module installable, and installability can lag tag publication.
