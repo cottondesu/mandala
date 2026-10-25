@@ -70,7 +70,7 @@ func TestRunVersionWithControlledModuleVersion(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			var out, diagnostics bytes.Buffer
-			code := run([]string{"--version"}, root, &out, &diagnostics, tt.raw)
+			code := run([]string{"--version"}, root, strings.NewReader(""), &out, &diagnostics, tt.raw)
 			if code != 0 || out.String() != tt.want || diagnostics.Len() != 0 {
 				t.Fatalf("version: exit=%d stdout=%q stderr=%q", code, out.String(), diagnostics.String())
 			}
@@ -123,7 +123,7 @@ func TestRunVersionIgnoresBrokenState(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out, diagnostics bytes.Buffer
-	code := run([]string{"--version"}, root, &out, &diagnostics, "v0.3.0")
+	code := run([]string{"--version"}, root, strings.NewReader(""), &out, &diagnostics, "v0.3.0")
 	if code != 0 || out.String() != "mandala v0.3.0\n" || diagnostics.Len() != 0 {
 		t.Fatalf("broken state: exit=%d stdout=%q stderr=%q", code, out.String(), diagnostics.String())
 	}

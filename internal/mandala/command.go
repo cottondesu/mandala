@@ -5,21 +5,22 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 )
 
 const rootHelp = `Usage: mandala [--project DIR] <command> [flags] [arguments]
        mandala --version
 
-Commands: init, add, mark, done, status, gaps, show, clean
+Commands: init, add, mark, done, status, gaps, show, clean, batch
 Use "mandala <command> --help" for command syntax.
 `
 
 func Run(args []string, start string, stdout, stderr io.Writer) int {
-	return run(args, start, stdout, stderr, currentModuleVersion())
+	return run(args, start, os.Stdin, stdout, stderr, currentModuleVersion())
 }
 
-func run(args []string, start string, stdout, stderr io.Writer, moduleVersion string) int {
+func run(args []string, start string, stdin io.Reader, stdout, stderr io.Writer, moduleVersion string) int {
 	rootFlags := flag.NewFlagSet("mandala", flag.ContinueOnError)
 	rootFlags.SetOutput(io.Discard)
 	project := rootFlags.String("project", "", "project root directory")
@@ -53,18 +54,21 @@ func run(args []string, start string, stdout, stderr io.Writer, moduleVersion st
 	if len(remaining) == 0 {
 		return writeError(stderr, problem("E_USAGE", "missing command; use --help"))
 	}
-	output, code, err := execute(remaining[0], remaining[1:], start, *project)
+	output, code, err := execute(remaining[0], remaining[1:], start, *project, stdin)
 	if err != nil {
 		return writeError(stderr, err)
 	}
 	return writeResult(stdout, stderr, output, code)
 }
 
-func execute(name string, args []string, start, project string) (string, int, error) {
+func execute(name string, args []string, start, project string, stdin io.Reader) (string, int, error) {
 	switch name {
-	case "init", "add", "mark", "done", "status", "gaps", "show", "clean":
+	case "init", "add", "mark", "done", "status", "gaps", "show", "clean", "batch":
 	default:
 		return "", 0, problem("E_USAGE", "unknown command %q", name)
+	}
+	if name == "batch" {
+		return executeBatch(args, start, project, stdin)
 	}
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -176,6 +180,8 @@ func commandHelp(name string) string {
 		return "Usage: mandala [--project DIR] gaps [--required] [--json]\n"
 	case "show":
 		return "Usage: mandala [--project DIR] show [--json]\n"
+	case "batch":
+		return "Usage: mandala [--project DIR] batch --file <file|-> [--dry-run] [--json]\n"
 	default:
 		return fmt.Sprintf("Usage: mandala [--project DIR] %s\n", name)
 	}
