@@ -32,4 +32,16 @@ One feature theme: atomic batch operations for human and coding-agent workflows,
 
 ## Evidence at draft time
 
-Local: `go test -count=1 ./...`, `go test -shuffle=on -count=1 ./...`, `go test -race -shuffle=on -count=1 ./...`, `go vet ./...`, `go build ./...`, `git diff --check` all pass on the candidate tree with both the Go 1.26.10 and 1.27 toolchains; mutation checks (the 7 specified defects plus the 5 audit-round-2 survivors are each caught by the batch tests); CI smoke gained byte-exact batch cases with `actionlint` clean. Independent review and remote CI on the exact candidate SHA remain to be recorded per the RELEASING.md gates before any publication.
+### Historical evidence (verified)
+
+- Implementation: PR [#5](https://github.com/cottondesu/mandala/pull/5) `feat: add atomic batch operations and deterministic dry-run`, **merged** to `main` on 2026-10-25 (merge commit `a56576891ec7006c3ae65609f48763dbc1245fe7`).
+- PR commits: feature implementation `2a680b9c1b26e44203792239d903acc70de9614e`; Windows CRLF test fix `1658865157009d13bfda1a4d315411629dac073c` (PR HEAD).
+- Independent audit (Claude) of the implementation across review rounds: final state **0 BLOCKER / 0 MAJOR**; MINOR-4 recorded as a human-approved exception. The Windows CRLF fix was audited and passed.
+- Remote CI on the PR HEAD SHA `1658865`: run [40158802643](https://github.com/cottondesu/mandala/actions/runs/40158802643) — **10/10 jobs success**.
+- Remote CI on the main merge SHA `a565768`: run [40191966945](https://github.com/cottondesu/mandala/actions/runs/40191966945) — **10/10 jobs success**.
+- MINOR-4 (Windows skip of `TestBatchSaveFailure`): human exception **approved for v0.5.0 only** ([comment](https://github.com/cottondesu/mandala/pull/5#issuecomment-6397343300), 2026-10-25). That approval explicitly does **not** authorize the release itself.
+- Local (pre-merge): `go test -count=1 ./...`, `go test -shuffle=on -count=1 ./...`, `go test -race -shuffle=on -count=1 ./...`, `go vet ./...`, `go build ./...`, `git diff --check` all pass on the candidate tree with both the Go 1.26.10 and 1.27 toolchains; mutation checks (the 7 specified defects plus the 5 audit-round-2 survivors are each caught by the batch tests); CI smoke gained byte-exact batch cases with `actionlint` clean.
+
+### Final-candidate gates (not yet run)
+
+The evidence above is historical: it covers PR #5's commits and the merge SHA, not the final release candidate. Merging the release-preparation PR creates a new `main` SHA, and no CI has run on that SHA yet. Per [RELEASING.md](RELEASING.md), every gate — local tests, independent review, remote CI, tag, publication, install — must be re-run and recorded against the exact final candidate SHA; a green run on any earlier SHA does not carry over.
