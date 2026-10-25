@@ -1,6 +1,6 @@
 # mandala v0.5.0 release notes (DRAFT — not yet published)
 
-Status: **draft for the v0.5.0 candidate.** v0.5.0 has not been tagged, released, or published. This note is written before publication; the baseline is v0.4.1 (commit `bdff5992e2935d1a55919ec58e111cdaa824f7fc`). Release execution follows [RELEASING.md](RELEASING.md); nothing below implies any release step has run.
+Status at preparation time: **draft for the v0.5.0 candidate.** At that time v0.5.0 has not been tagged, released, or published. This repository draft is a frozen preparation snapshot after candidate selection; it does not track later publication status. The baseline is v0.4.1 (commit `bdff5992e2935d1a55919ec58e111cdaa824f7fc`). Release execution follows [RELEASING.md](RELEASING.md); nothing below implies any release step has run. Actual gate results and publication status belong in external comments on [merged PR #6](https://github.com/cottondesu/mandala/pull/6) and the GitHub Release description.
 
 ## Scope
 
@@ -44,4 +44,6 @@ One feature theme: atomic batch operations for human and coding-agent workflows,
 
 ### Final-candidate gates (not yet run)
 
-The evidence above is historical: it covers PR #5's commits and the merge SHA, not the final release candidate. Merging the release-preparation PR creates a new `main` SHA, and no CI has run on that SHA yet. Per [RELEASING.md](RELEASING.md), every gate — local tests, independent review, remote CI, tag, publication, install — must be re-run and recorded against the exact final candidate SHA; a green run on any earlier SHA does not carry over.
+The evidence above covers PR #5's commits and merge SHA, not the final release candidate. Select the final SHA from main after PR #6 merges, then execute all eight gates in [RELEASING.md](RELEASING.md) against that same SHA. No historical CI, including PR #6 run 40197731240 on `0c4c0868`, satisfies a gate on a later SHA.
+
+Record actual gate results, full candidate SHA, human release approval, and publication outcomes in new external comments on merged PR #6. The tracked [evidence snapshot](release-evidence-v0.5.0.md) retains its initial eight NOT RUN rows. Do not edit either repository document after candidate selection. Compose the GitHub Release description from this draft's feature content and the external evidence. Update only that GitHub description with actual gate results and comment URLs. Install verification follows publication; mark it pending until completed, then link its external record. Completing the Release description requires no source commit and does not change the candidate SHA.
