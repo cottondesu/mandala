@@ -56,6 +56,11 @@ func run(args []string) int {
 		}
 		return 2
 	}
+	if flags.NArg() != 0 {
+		fmt.Fprintf(os.Stderr, "release-evidence: unexpected positional arguments: %q\n", flags.Args())
+		flags.Usage()
+		return 2
+	}
 	if cfg.output == "" || cfg.candidate == "" {
 		fmt.Fprintln(os.Stderr, "release-evidence: -output and -candidate are required")
 		fmt.Fprintln(os.Stderr, usage)
@@ -64,6 +69,19 @@ func run(args []string) int {
 	if err := validateSHA(cfg.candidate); err != nil {
 		fmt.Fprintf(os.Stderr, "release-evidence: -candidate: %v\n", err)
 		return 2
+	}
+	// An omitted flag stays a BLOCKED run; a flag given explicitly must parse,
+	// empty included. Validate before any git/go command or directory creation.
+	expectedMinorSet := false
+	flags.Visit(func(f *flag.Flag) { expectedMinorSet = expectedMinorSet || f.Name == "expected-go-minor" })
+	expectedMinor := ""
+	if expectedMinorSet {
+		minor, err := parseExpectedMinor(cfg.expectedMinor)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "release-evidence: -expected-go-minor: %v\n", err)
+			return 2
+		}
+		expectedMinor = minor
 	}
 
 	// SIGINT/SIGTERM cancel the context: the running gate command is marked
@@ -89,7 +107,7 @@ func run(args []string) int {
 		OutputDir:     outDir,
 		Candidate:     strings.ToLower(cfg.candidate),
 		GoPath:        cfg.goPath,
-		ExpectedMinor: normalizeMinor(cfg.expectedMinor),
+		ExpectedMinor: expectedMinor,
 		AllowDirty:    cfg.allowDirty,
 		Runner:        &execRunner{ctx: ctx, dir: root},
 		Ctx:           ctx,

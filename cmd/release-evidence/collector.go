@@ -551,12 +551,17 @@ func minorOfGOVERSION(v string) string {
 	return match[1]
 }
 
-// normalizeMinor accepts "1.27", "go1.27", or "1.27.3" and yields "1.27".
-func normalizeMinor(s string) string {
-	rest := strings.TrimPrefix(strings.TrimSpace(s), "go")
-	parts := strings.SplitN(rest, ".", 3)
-	if len(parts) < 2 {
-		return rest
+// parseExpectedMinor accepts "1.27", "go1.27", "1.27.3", or "go1.27.3" (outer
+// whitespace ignored) and yields "1.27". The whole input must match the same
+// numeric grammar as GOVERSION; anything else, including "", is an error.
+func parseExpectedMinor(s string) (string, error) {
+	v := strings.TrimSpace(s)
+	if !strings.HasPrefix(v, "go") {
+		v = "go" + v
 	}
-	return parts[0] + "." + parts[1]
+	minor := minorOfGOVERSION(v)
+	if minor == "" {
+		return "", fmt.Errorf("%q is not a Go version; want MAJOR.MINOR[.PATCH] with an optional go prefix, e.g. 1.27, go1.27, or 1.27.1", s)
+	}
+	return minor, nil
 }

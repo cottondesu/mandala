@@ -17,7 +17,13 @@ go run ./cmd/release-evidence \
 ```
 
 Exit code: `0` only when `release_status` is `PASS`; `1` for `BLOCKED` or any
-collection error; `130` when interrupted by SIGINT/SIGTERM.
+collection error; `130` when interrupted by SIGINT/SIGTERM; `2` for a
+command-line usage error (see below).
+
+Positional arguments, invalid candidate SHAs, and malformed explicitly supplied
+`-expected-go-minor` values are rejected before any Git or Go command runs and
+before the evidence directory is created. These argument errors exit `2`, print
+a diagnostic on stderr, write nothing to stdout, and create no output directory.
 
 ### Flags
 
@@ -25,7 +31,7 @@ collection error; `130` when interrupted by SIGINT/SIGTERM.
 | --- | --- |
 | `-output DIR` | Required. A **new, never-used** directory **outside the source root**. The parent directory must already exist. The parent and source root are resolved through symlinks before the final component is created with `os.Mkdir`, so a rerun to the same path fails instead of overwriting earlier evidence. |
 | `-candidate SHA` | Required. The expected full git commit SHA (40 or 64 hex characters). |
-| `-expected-go-minor V` | Required in practice for a PASS: the Go minor version (e.g. `1.27`) that the selected toolchain must report. |
+| `-expected-go-minor V` | Required in practice for a PASS: the Go minor version (e.g. `1.27`) that the selected toolchain must report. The whole value must be numeric `MAJOR.MINOR` or `MAJOR.MINOR.PATCH` with an optional `go` prefix (`1.27`, `go1.27`, `1.27.1`, `go1.27.3`; surrounding whitespace is ignored) and is reduced to its minor. Values such as `1.27.invalid`, `1.27.3.extra`, `1.27.`, `go`, `1`, `1.27-beta`, `1.27abc`, or `1..27` are rejected with exit `2`. When the flag is **omitted** the run still proceeds and is `BLOCKED`; when it is given **explicitly** it must parse, so an empty or whitespace-only value is also rejected with exit `2`. |
 | `-go PATH` | Go toolchain to interrogate and use (default `go`). Both `go version` and `go env GOVERSION GOOS GOARCH` are run against it and recorded. |
 | `-allow-dirty` | Development mode. Collect even when the tree is dirty. The release status stays **BLOCKED** and no exact-candidate claim is made, regardless of command results. |
 

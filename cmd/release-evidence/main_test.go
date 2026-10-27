@@ -38,9 +38,26 @@ func TestMinorParsing(t *testing.T) {
 	if got := minorOfGOVERSION("devel +abc def"); got != "" {
 		t.Errorf("minorOfGOVERSION(devel) = %q, want empty", got)
 	}
-	for in, want := range map[string]string{"1.27": "1.27", "go1.27": "1.27", "1.27.3": "1.27", "": ""} {
-		if got := normalizeMinor(in); got != want {
-			t.Errorf("normalizeMinor(%q) = %q, want %q", in, got, want)
+}
+
+func TestParseExpectedMinor(t *testing.T) {
+	accepted := map[string]string{
+		"1.26": "1.26", "1.27": "1.27", "go1.26": "1.26", "go1.27": "1.27",
+		"1.26.10": "1.26", "1.27.1": "1.27", "go1.27.3": "1.27",
+		"  1.27  ": "1.27", "\tgo1.27.1\n": "1.27", "1.100": "1.100", "2.0": "2.0",
+	}
+	for in, want := range accepted {
+		got, err := parseExpectedMinor(in)
+		if err != nil || got != want {
+			t.Errorf("parseExpectedMinor(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	for _, in := range []string{
+		"", " ", "go", "1", "go1", "1.27.invalid", "1.27.3.extra", "1.27.", "1.27-beta",
+		"1.27abc", "1..27", ".27", "gogo1.27", "go 1.27", "1. 27", "1.27 .3", "v1.27", "1.27rc1", "1.-27",
+	} {
+		if got, err := parseExpectedMinor(in); err == nil {
+			t.Errorf("parseExpectedMinor(%q) = %q, want error", in, got)
 		}
 	}
 }
