@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"slices"
 	"unicode/utf8"
@@ -14,11 +13,11 @@ import (
 // batchResultVersion is the schema version of the batch output contract.
 const batchResultVersion = 1
 
-// Test seams: batchOpenInputFile lets tests simulate the input file being
-// swapped between Stat and Open, and batchSave lets tests count Save calls.
-// Both default to the real implementations.
+// Test seams: batchOpenInputFile is the data open that runs after the input
+// identity snapshot, so tests can replace the file in between, and batchSave
+// lets tests count Save calls. Both default to the real implementations.
 var (
-	batchOpenInputFile = os.Open
+	batchOpenInputFile = openBatchInputFile
 	batchSave          = Save
 )
 
@@ -254,30 +253,5 @@ func readBatchInput(file, start string, stdin io.Reader) ([]byte, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(start, path)
 	}
-	// Stat before opening: opening a FIFO (or another special file that
-	// blocks in open) would hang, so regular-file status is checked first
-	// and the open is allowed only for regular files.
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("inspect batch input: %w", err)
-	}
-	if !info.Mode().IsRegular() {
-		return nil, problem("E_IO", "batch input %q is not a regular file", file)
-	}
-	f, err := batchOpenInputFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("open batch input: %w", err)
-	}
-	defer f.Close()
-	openedInfo, err := f.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("inspect batch input: %w", err)
-	}
-	if !openedInfo.Mode().IsRegular() {
-		return nil, problem("E_IO", "batch input %q is not a regular file", file)
-	}
-	if !os.SameFile(info, openedInfo) {
-		return nil, problem("E_IO", "batch input %q changed while opening", file)
-	}
-	return readBoundedBatchInput(f)
+	return readBatchInputFile(path, file)
 }
