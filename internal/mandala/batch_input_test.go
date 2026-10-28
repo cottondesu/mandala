@@ -151,6 +151,42 @@ func TestParseBatchInputRejects(t *testing.T) {
 	}
 }
 
+func TestParseBatchVersionNumberBoundaries(t *testing.T) {
+	for _, version := range []string{"01", "-01", "00", "1.", "1e", "0x1", "0", "2", "1.0", "1e0"} {
+		for _, versionFirst := range []bool{true, false} {
+			name := version + "/operations-first"
+			input := `{"operations":[{"op":"add","id":"x"}],"batch_version":` + version + `}`
+			if versionFirst {
+				name = version + "/version-first"
+				input = `{"batch_version":` + version + `,"operations":[{"op":"add","id":"x"}]}`
+			}
+			t.Run(name, func(t *testing.T) {
+				_, err := parseBatchInput([]byte(input))
+				want := "invalid JSON:"
+				switch version {
+				case "0", "2", "1.0", "1e0":
+					want = "unsupported batch_version " + version
+				}
+				if !isProblemCode(err, "E_BATCH_INVALID") || err == nil || !strings.HasPrefix(err.Error(), want) {
+					t.Fatalf("error = %v, want E_BATCH_INVALID with prefix %q", err, want)
+				}
+			})
+		}
+	}
+}
+
+func TestParseBatchVersionDiagnosticPrecedence(t *testing.T) {
+	for _, tc := range []struct{ input, want string }{
+		{`{"batch_version":2,"operations":`, "unsupported batch_version 2"},
+		{`{"unknown":0,"batch_version":01}`, `unknown JSON field "unknown"`},
+	} {
+		_, err := parseBatchInput([]byte(tc.input))
+		if err == nil || err.Error() != tc.want {
+			t.Errorf("parseBatchInput(%q) = %v, want %q", tc.input, err, tc.want)
+		}
+	}
+}
+
 // TestParseBatchInputOperationCount proves the operation-count limits are
 // enforced with E_LIMIT after the document itself parses: at least 1 and at
 // most 128 operations.

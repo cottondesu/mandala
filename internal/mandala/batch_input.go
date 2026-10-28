@@ -60,7 +60,7 @@ func parseBatchInput(data []byte) ([]BatchOperation, error) {
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
-	ops, err := parseBatchDocument(decoder)
+	ops, err := parseBatchDocument(decoder, data)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func parseBatchInput(data []byte) ([]BatchOperation, error) {
 	return ops, nil
 }
 
-func parseBatchDocument(decoder *json.Decoder) ([]BatchOperation, error) {
+func parseBatchDocument(decoder *json.Decoder, data []byte) ([]BatchOperation, error) {
 	if err := expectBatchDelim(decoder, '{'); err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func parseBatchDocument(decoder *json.Decoder) ([]BatchOperation, error) {
 				return nil, problem("E_BATCH_INVALID", "duplicate JSON field %q", key)
 			}
 			seenVersion = true
-			if err := parseBatchVersion(decoder); err != nil {
+			if err := parseBatchVersion(decoder, data); err != nil {
 				return nil, err
 			}
 		case "operations":
@@ -121,7 +121,7 @@ func parseBatchDocument(decoder *json.Decoder) ([]BatchOperation, error) {
 	return ops, nil
 }
 
-func parseBatchVersion(decoder *json.Decoder) error {
+func parseBatchVersion(decoder *json.Decoder, data []byte) error {
 	token, err := decoder.Token()
 	if err != nil {
 		return batchParseError(err)
@@ -131,6 +131,14 @@ func parseBatchVersion(decoder *json.Decoder) error {
 		return problem("E_BATCH_INVALID", "batch_version must be the integer %d", batchInputVersion)
 	}
 	if number.String() != "1" {
+		// Token can return a number prefix, such as 0 in 01. Check the
+		// following object delimiter before reporting an unsupported version.
+		rest := bytes.TrimLeft(data[decoder.InputOffset():], " \t\r\n")
+		if len(rest) > 0 && rest[0] != ',' && rest[0] != '}' {
+			if _, err := decoder.Token(); err != nil {
+				return batchParseError(err)
+			}
+		}
 		return problem("E_BATCH_INVALID", "unsupported batch_version %s", truncateBatchToken(number.String()))
 	}
 	return nil
